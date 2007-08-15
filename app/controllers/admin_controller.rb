@@ -53,8 +53,8 @@ class AdminController < ApplicationController
     # Force ActionMailer to raise delivery errors so we can catch it
     ActionMailer::Base.raise_delivery_errors = true
     begin
-      @test = Mailer.deliver_test(logged_in_user)
-      flash[:notice] = l(:notice_email_sent, logged_in_user.mail)
+      @test = Mailer.deliver_test(User.current)
+      flash[:notice] = l(:notice_email_sent, User.current.mail)
     rescue Exception => e
       flash[:error] = l(:notice_email_error, e.message)
     end

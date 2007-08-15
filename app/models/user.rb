@@ -187,6 +187,10 @@ class User < ActiveRecord::Base
     @current_user ||= AnonymousUser.new
   end
   
+  def self.anonymous
+    AnonymousUser.new
+  end
+  
 private
   # Return password digest
   def self.hash_password(clear_password)

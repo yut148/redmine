@@ -16,48 +16,44 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 class ApplicationController < ActionController::Base
-  before_filter :check_if_login_required, :set_localization
+  before_filter :user_setup, :check_if_login_required, :set_localization
   filter_parameter_logging :password
   
   REDMINE_SUPPORTED_SCM.each do |scm|
     require_dependency "repository/#{scm.underscore}"
   end
   
-  def logged_in_user=(user)
-    User.current = user
-    session[:user_id] = (user ? user.id : nil)
-  end
-  
   def logged_in_user
-    if User.current.logged?
-      User.current
-    elsif session[:user_id]
-      User.current = User.find(session[:user_id])
-    else
-      nil
-    end
+    User.current.logged? ? User.current : nil
   end
   
   def current_role
     @current_role ||= User.current.role_for_project(@project)
   end
   
+  def user_setup
+    if session[:user_id]
+      # existing session
+      User.current = User.find(session[:user_id])
+    elsif cookies[:autologin] && Setting.autologin?
+      # auto-login feature
+      User.current = User.find_by_autologin_key(autologin_key)
+    else
+      User.current = User.anonymous
+    end
+  end
+  
   # check if login is globally required to access the application
   def check_if_login_required
     # no check needed if user is already logged in
-    return true if logged_in_user
-    # auto-login feature
-    autologin_key = cookies[:autologin]
-    if autologin_key && Setting.autologin?
-      self.logged_in_user = User.find_by_autologin_key(autologin_key)
-    end
+    return true if User.current.logged?
     require_login if Setting.login_required?
   end 
   
   def set_localization
     lang = begin
-      if self.logged_in_user and self.logged_in_user.language and !self.logged_in_user.language.empty? and GLoc.valid_languages.include? self.logged_in_user.language.to_sym
-        self.logged_in_user.language
+      if !User.current.language.blank? and GLoc.valid_languages.include? User.current.language.to_sym
+        User.current.language
       elsif request.env['HTTP_ACCEPT_LANGUAGE']
         accept_lang = parse_qvalues(request.env['HTTP_ACCEPT_LANGUAGE']).first.split('-').first
         if accept_lang and !accept_lang.empty? and GLoc.valid_languages.include? accept_lang.to_sym
@@ -71,7 +67,7 @@ class ApplicationController < ActionController::Base
   end
   
   def require_login
-    unless self.logged_in_user
+    if !User.current.logged?
       store_location
       redirect_to :controller => "account", :action => "login"
       return false
@@ -81,7 +77,7 @@ class ApplicationController < ActionController::Base
 
   def require_admin
     return unless require_login
-    unless self.logged_in_user.admin?
+    if !User.current.admin?
       render_403
       return false
     end
