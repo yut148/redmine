@@ -46,14 +46,6 @@ class AdminController < ApplicationController
   end
 
   def mail_options
-    @actions = Permission.find(:all, :conditions => ["mail_option=?", true]) || []
-    if request.post?
-      @actions.each { |a|
-        a.mail_enabled = (params[:action_ids] || []).include? a.id.to_s 
-        a.save
-      }
-      flash.now[:notice] = l(:notice_successful_update)
-    end
   end
   
   def test_email

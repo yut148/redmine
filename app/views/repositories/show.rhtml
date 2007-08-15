@@ -4,12 +4,12 @@
 
 <h2><%= l(:label_repository) %> (<%= @repository.scm_name %>)</h2>
 
-<% unless @entries.nil? %>
+<% if !@entries.nil? && authorize_for('repositories', 'browse') %>
 <h3><%= l(:label_browse) %></h3>
 <%= render :partial => 'dir_list' %>
 <% end %>
 
-<% unless @changesets.empty? %>
+<% if !@changesets.empty? && authorize_for('repositories', 'revisions') %>
 <h3><%= l(:label_latest_revision_plural) %></h3>
 <%= render :partial => 'revisions', :locals => {:project => @project, :path => '', :revisions => @changesets, :entry => nil }%>
 <p><%= link_to l(:label_view_revisions), :action => 'revisions', :id => @project %></p>

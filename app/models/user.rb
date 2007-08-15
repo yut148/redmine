@@ -121,18 +121,6 @@ class User < ActiveRecord::Base
     User.hash_password(clear_password) == self.hashed_password
   end
   
-  def role_for_project(project)
-    return nil unless project
-    member = memberships.detect {|m| m.project_id == project.id}
-    member ? member.role : nil 
-  end
-  
-  def authorized_to(project, action)
-    return true if self.admin?
-    role = role_for_project(project)
-    role && Permission.allowed_to_role(action, role)
-  end
-  
   def pref
     self.preference ||= UserPreference.new(:user => self)
   end
@@ -155,9 +143,59 @@ class User < ActiveRecord::Base
     lastname == user.lastname ? firstname <=> user.firstname : lastname <=> user.lastname
   end
   
+  def logged?
+    true
+  end
+  
+  # Return user's role for project
+  def role_for_project(project)
+    # No role on archived projects
+    return nil unless project && project.active?
+    # Find project membership
+    membership = memberships.detect {|m| m.project_id == project.id}
+    if membership
+      membership.role
+    elsif logged?
+      Role.non_member
+    else
+      Role.anonymous
+    end
+  end
+  
+  # Return true if the user is a member of project
+  def member_of?(project)
+    role_for_project(project).member?
+  end
+  
+  # Return true if the user is allowed to do the specified action on project
+  # action can be:
+  # * a parameter-like Hash (eg. :controller => 'projects', :action => 'edit')
+  # * a permission Symbol (eg. :edit_project)
+  def allowed_to?(action, project)
+    return false unless project.active?
+    return true if admin?
+    role = role_for_project(project)
+    return false unless role
+    role.allowed_to?(action) && (project.is_public? || role.member?)
+  end
+  
+  def self.current=(user)
+    @current_user = user
+  end
+  
+  def self.current
+    @current_user ||= AnonymousUser.new
+  end
+  
 private
   # Return password digest
   def self.hash_password(clear_password)
     Digest::SHA1.hexdigest(clear_password || "")
+  end
+end
+
+class AnonymousUser < User
+  def logged?
+    false
   end
 end

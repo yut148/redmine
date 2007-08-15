@@ -22,8 +22,7 @@ require 'digest/sha1'
 class RepositoriesController < ApplicationController
   layout 'base'
   before_filter :find_project, :except => [:update_form]
-  before_filter :authorize, :except => [:update_form, :stats, :graph]
-  before_filter :check_project_privacy, :only => [:stats, :graph]
+  before_filter :authorize, :except => [:update_form]
   
   def show
     # check if new revisions have been committed in the repository

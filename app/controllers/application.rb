@@ -24,22 +24,22 @@ class ApplicationController < ActionController::Base
   end
   
   def logged_in_user=(user)
-    @logged_in_user = user
+    User.current = user
     session[:user_id] = (user ? user.id : nil)
   end
   
   def logged_in_user
-    if session[:user_id]
-      @logged_in_user ||= User.find(session[:user_id])
+    if User.current.logged?
+      User.current
+    elsif session[:user_id]
+      User.current = User.find(session[:user_id])
     else
       nil
     end
   end
   
-  # Returns the role that the logged in user has on the current project
-  # or nil if current user is not a member of the project
-  def logged_in_user_membership
-    @user_membership ||= logged_in_user.role_for_project(@project)
+  def current_role
+    @current_role ||= User.current.role_for_project(@project)
   end
   
   # check if login is globally required to access the application
@@ -88,27 +88,10 @@ class ApplicationController < ActionController::Base
     true
   end
 
-  # authorizes the user for the requested action.
+  # Authorize the user for the requested action
   def authorize(ctrl = params[:controller], action = params[:action])
-    unless @project.active?
-      @project = nil
-      render_404
-      return false
-    end
-    # check if action is allowed on public projects
-    if @project.is_public? and Permission.allowed_to_public "%s/%s" % [ ctrl, action ]
-      return true
-    end    
-    # if action is not public, force login
-    return unless require_login    
-    # admin is always authorized
-    return true if self.logged_in_user.admin?
-    # if not admin, check membership permission    
-    if logged_in_user_membership and Permission.allowed_to_role( "%s/%s" % [ ctrl, action ], logged_in_user_membership )    
-      return true		
-    end		
-    render_403
-    false
+    allowed = User.current.allowed_to?({:controller => ctrl, :action => action}, @project)
+    allowed ? true : (User.current.logged? ? render_403 : require_login)
   end
   
   # make sure that the user is a member of the project (or admin) if project is private
@@ -119,11 +102,8 @@ class ApplicationController < ActionController::Base
       render_404
       return false
     end
-    return true if @project.is_public?
-    return false unless logged_in_user
-    return true if logged_in_user.admin? || logged_in_user_membership
-    render_403
-    false
+    return true if @project.is_public? || User.current.member_of?(@project) || User.current.admin?
+    User.current.logged? ? render_403 : require_login
   end
 
   # store current uri in session.

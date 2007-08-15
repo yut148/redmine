@@ -19,7 +19,7 @@
                          :update => "content",
                        }, :class => 'icon icon-reload'  %>
                        
-    <% if loggedin? %>    
+    <% if current_role.allowed_to?(:save_queries) %>
     <%= link_to_remote l(:button_save), 
                        { :url => { :controller => 'queries', :action => 'new', :project_id => @project },
                          :method => 'get',

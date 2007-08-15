@@ -107,6 +107,6 @@ class UserTest < Test::Unit::TestCase
     assert_equal "Manager", role.name
     
     # user with no role
-    assert_nil @dlopper.role_for_project(Project.find(2))
+    assert !@dlopper.role_for_project(Project.find(2)).member?
   end
 end
