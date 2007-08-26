@@ -7,7 +7,7 @@ roles_004:
     --- 
     - :add_issues
     - :edit_issues
-    - :set_issue_relations
+    - :manage_issue_relations
     - :add_issue_notes
     - :change_issue_status
     - :move_issues
@@ -15,13 +15,13 @@ roles_004:
     - :view_gantt
     - :view_calendar
     - :log_time
-    - :view_spent_time
+    - :view_time_entries
     - :comment_news
     - :view_documents
     - :manage_documents
-    - :view_wiki
-    - :edit_wiki
-    - :post_messages
+    - :view_wiki_pages
+    - :edit_wiki_pages
+    - :add_messages
     - :view_files
     - :manage_files
     - :browse_repository
@@ -36,10 +36,10 @@ roles_005:
     --- 
     - :view_gantt
     - :view_calendar
-    - :view_spent_time
+    - :view_time_entries
     - :view_documents
-    - :view_wiki
-    - :edit_wiki
+    - :view_wiki_pages
+    - :edit_wiki_pages
     - :view_files
     - :browse_repository
     - :view_changesets
@@ -57,7 +57,7 @@ roles_001:
     - :manage_categories
     - :add_issues
     - :edit_issues
-    - :set_issue_relations
+    - :manage_issue_relations
     - :add_issue_notes
     - :change_issue_status
     - :move_issues
@@ -67,15 +67,15 @@ roles_001:
     - :view_gantt
     - :view_calendar
     - :log_time
-    - :view_spent_time
+    - :view_time_entries
     - :manage_news
     - :comment_news
     - :view_documents
     - :manage_documents
-    - :view_wiki
-    - :edit_wiki
+    - :view_wiki_pages
+    - :edit_wiki_pages
     - :delete_wiki_pages
-    - :post_messages
+    - :add_messages
     - :manage_boards
     - :view_files
     - :manage_files
@@ -95,7 +95,7 @@ roles_002:
     - :manage_categories
     - :add_issues
     - :edit_issues
-    - :set_issue_relations
+    - :manage_issue_relations
     - :add_issue_notes
     - :change_issue_status
     - :move_issues
@@ -105,15 +105,15 @@ roles_002:
     - :view_gantt
     - :view_calendar
     - :log_time
-    - :view_spent_time
+    - :view_time_entries
     - :manage_news
     - :comment_news
     - :view_documents
     - :manage_documents
-    - :view_wiki
-    - :edit_wiki
+    - :view_wiki_pages
+    - :edit_wiki_pages
     - :delete_wiki_pages
-    - :post_messages
+    - :add_messages
     - :manage_boards
     - :view_files
     - :manage_files
@@ -133,7 +133,7 @@ roles_003:
     - :manage_categories
     - :add_issues
     - :edit_issues
-    - :set_issue_relations
+    - :manage_issue_relations
     - :add_issue_notes
     - :change_issue_status
     - :move_issues
@@ -143,15 +143,15 @@ roles_003:
     - :view_gantt
     - :view_calendar
     - :log_time
-    - :view_spent_time
+    - :view_time_entries
     - :manage_news
     - :comment_news
     - :view_documents
     - :manage_documents
-    - :view_wiki
-    - :edit_wiki
+    - :view_wiki_pages
+    - :edit_wiki_pages
     - :delete_wiki_pages
-    - :post_messages
+    - :add_messages
     - :manage_boards
     - :view_files
     - :manage_files

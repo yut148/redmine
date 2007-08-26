@@ -120,14 +120,14 @@ class ProjectsControllerTest < Test::Unit::TestCase
   end
   
   def test_archive    
-    User.current = User.find(1) # admin
+    @request.session[:user_id] = 1 # admin
     post :archive, :id => 1
     assert_redirected_to 'admin/projects'
     assert !Project.find(1).active?
   end
   
   def test_unarchive
-    User.current = User.find(1) # admin
+    @request.session[:user_id] = 1 # admin
     Project.find(1).archive
     post :unarchive, :id => 1
     assert_redirected_to 'admin/projects'
