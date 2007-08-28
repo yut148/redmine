@@ -16,6 +16,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 class Role < ActiveRecord::Base
+  # Built-in roles
+  BUILTIN_NON_MEMBER = 1
+  BUILTIN_ANONYMOUS  = 2
+  
   before_destroy :check_deletable
   has_many :workflows, :dependent => :delete_all
   has_many :members
@@ -67,8 +71,8 @@ class Role < ActiveRecord::Base
   # Return all the permissions that can be given to the role
   def setable_permissions
     setable_permissions = Redmine::AccessControl.permissions - Redmine::AccessControl.public_permissions
-    setable_permissions -= Redmine::AccessControl.members_only_permissions if self.builtin == 1
-    setable_permissions -= Redmine::AccessControl.loggedin_only_permissions if self.builtin == 2
+    setable_permissions -= Redmine::AccessControl.members_only_permissions if self.builtin == BUILTIN_NON_MEMBER
+    setable_permissions -= Redmine::AccessControl.loggedin_only_permissions if self.builtin == BUILTIN_ANONYMOUS
     setable_permissions
   end
 
@@ -79,12 +83,12 @@ class Role < ActiveRecord::Base
 
   # Return the builtin 'non member' role
   def self.non_member
-    find(:first, :conditions => {:builtin => 1}) || raise('Missing non-member builtin role.')
+    find(:first, :conditions => {:builtin => BUILTIN_NON_MEMBER}) || raise('Missing non-member builtin role.')
   end
 
   # Return the builtin 'anonymous' role 
   def self.anonymous
-    find(:first, :conditions => {:builtin => 2}) || raise('Missing anonymous builtin role.')
+    find(:first, :conditions => {:builtin => BUILTIN_ANONYMOUS}) || raise('Missing anonymous builtin role.')
   end
 
   
