@@ -22,6 +22,7 @@ class ProjectsController < ApplicationController
   before_filter :find_project, :except => [ :index, :list, :add ]
   before_filter :authorize, :except => [ :index, :list, :add, :archive, :unarchive, :destroy ]
   before_filter :require_admin, :only => [ :add, :archive, :unarchive, :destroy ]
+  accept_key_auth :activity, :calendar
   
   cache_sweeper :project_sweeper, :only => [ :add, :edit, :archive, :unarchive, :destroy ]
   cache_sweeper :issue_sweeper, :only => [ :add_issue ]
@@ -410,7 +411,11 @@ class ProjectsController < ApplicationController
   # Show news list of @project
   def list_news
     @news_pages, @news = paginate :news, :per_page => 10, :conditions => ["project_id=?", @project.id], :include => :author, :order => "#{News.table_name}.created_on DESC"
-    render :action => "list_news", :layout => false if request.xhr?
+    
+    respond_to do |format|
+      format.html { render :layout => false if request.xhr? }
+      format.atom { render_feed(@news, :title => "#{@project.name}: #{l(:label_news_plural)}") }
+    end
   end
 
   def add_file
@@ -457,79 +462,67 @@ class ProjectsController < ApplicationController
     @year ||= Date.today.year
     @month ||= Date.today.month
 
-    @date_from = Date.civil(@year, @month, 1)
-    @date_to = @date_from >> 1
-    
-    @events_by_day = {}    
-    
-    unless params[:show_issues] == "0"
-      @project.issues.find(:all, :include => [:author], :conditions => ["#{Issue.table_name}.created_on>=? and #{Issue.table_name}.created_on<=?", @date_from, @date_to] ).each { |i|
-        @events_by_day[i.created_on.to_date] ||= []
-        @events_by_day[i.created_on.to_date] << i
-      }
-      @show_issues = 1
+    case params[:format]
+    when 'rss'
+      # 30 last days
+      @date_from = Date.today - 30
+      @date_to = Date.today + 1
+    else
+      # current month
+      @date_from = Date.civil(@year, @month, 1)
+      @date_to = @date_from >> 1
     end
     
-    unless params[:show_news] == "0"
-      @project.news.find(:all, :conditions => ["#{News.table_name}.created_on>=? and #{News.table_name}.created_on<=?", @date_from, @date_to], :include => :author ).each { |i|
-        @events_by_day[i.created_on.to_date] ||= []
-        @events_by_day[i.created_on.to_date] << i
-      }
-      @show_news = 1 
+    @event_types = %w(issues news attachments documents wiki_edits revisions)
+    @event_types.delete('wiki_edits') unless @project.wiki
+    @event_types.delete('changesets') unless @project.repository
+    
+    @scope = @event_types.select {|t| params["show_#{t}"]}
+    # default events if none is specified in parameters
+    @scope = (@event_types - %w(wiki_edits))if @scope.empty?
+    
+    @events = []    
+    
+    if @scope.include?('issues')
+      @events += @project.issues.find(:all, :include => [:author, :tracker], :conditions => ["#{Issue.table_name}.created_on>=? and #{Issue.table_name}.created_on<=?", @date_from, @date_to] )
     end
     
-    unless params[:show_files] == "0"
-      Attachment.find(:all, :select => "#{Attachment.table_name}.*", :joins => "LEFT JOIN #{Version.table_name} ON #{Version.table_name}.id = #{Attachment.table_name}.container_id", :conditions => ["#{Attachment.table_name}.container_type='Version' and #{Version.table_name}.project_id=? and #{Attachment.table_name}.created_on>=? and #{Attachment.table_name}.created_on<=?", @project.id, @date_from, @date_to], :include => :author ).each { |i|
-        @events_by_day[i.created_on.to_date] ||= []
-        @events_by_day[i.created_on.to_date] << i
-      }
-      @show_files = 1 
+    if @scope.include?('news')
+      @events += @project.news.find(:all, :conditions => ["#{News.table_name}.created_on>=? and #{News.table_name}.created_on<=?", @date_from, @date_to], :include => :author )
     end
     
-    unless params[:show_documents] == "0"
-      @project.documents.find(:all, :conditions => ["#{Document.table_name}.created_on>=? and #{Document.table_name}.created_on<=?", @date_from, @date_to] ).each { |i|
-        @events_by_day[i.created_on.to_date] ||= []
-        @events_by_day[i.created_on.to_date] << i
-      }
-      Attachment.find(:all, :select => "attachments.*", :joins => "LEFT JOIN #{Document.table_name} ON #{Document.table_name}.id = #{Attachment.table_name}.container_id", :conditions => ["#{Attachment.table_name}.container_type='Document' and #{Document.table_name}.project_id=? and #{Attachment.table_name}.created_on>=? and #{Attachment.table_name}.created_on<=?", @project.id, @date_from, @date_to], :include => :author ).each { |i|
-        @events_by_day[i.created_on.to_date] ||= []
-        @events_by_day[i.created_on.to_date] << i
-      }
-      @show_documents = 1 
+    if @scope.include?('attachments')
+      @events += Attachment.find(:all, :select => "#{Attachment.table_name}.*", :joins => "LEFT JOIN #{Version.table_name} ON #{Version.table_name}.id = #{Attachment.table_name}.container_id", :conditions => ["#{Attachment.table_name}.container_type='Version' and #{Version.table_name}.project_id=? and #{Attachment.table_name}.created_on>=? and #{Attachment.table_name}.created_on<=?", @project.id, @date_from, @date_to], :include => :author )
     end
     
-    unless @project.wiki.nil? || params[:show_wiki_edits] == "0"
+    if @scope.include?('documents')
+      @events += @project.documents.find(:all, :conditions => ["#{Document.table_name}.created_on>=? and #{Document.table_name}.created_on<=?", @date_from, @date_to] )
+      @events += Attachment.find(:all, :select => "attachments.*", :joins => "LEFT JOIN #{Document.table_name} ON #{Document.table_name}.id = #{Attachment.table_name}.container_id", :conditions => ["#{Attachment.table_name}.container_type='Document' and #{Document.table_name}.project_id=? and #{Attachment.table_name}.created_on>=? and #{Attachment.table_name}.created_on<=?", @project.id, @date_from, @date_to], :include => :author )
+    end
+    
+    if @scope.include?('wiki_edits') && @project.wiki
       select = "#{WikiContent.versioned_table_name}.updated_on, #{WikiContent.versioned_table_name}.comments, " +
-               "#{WikiContent.versioned_table_name}.#{WikiContent.version_column}, #{WikiPage.table_name}.title"
+               "#{WikiContent.versioned_table_name}.#{WikiContent.version_column}, #{WikiPage.table_name}.title, " +
+               "#{WikiContent.versioned_table_name}.page_id, #{WikiContent.versioned_table_name}.author_id, " +
+               "#{WikiContent.versioned_table_name}.id"
       joins = "LEFT JOIN #{WikiPage.table_name} ON #{WikiPage.table_name}.id = #{WikiContent.versioned_table_name}.page_id " +
               "LEFT JOIN #{Wiki.table_name} ON #{Wiki.table_name}.id = #{WikiPage.table_name}.wiki_id "
       conditions = ["#{Wiki.table_name}.project_id = ? AND #{WikiContent.versioned_table_name}.updated_on BETWEEN ? AND ?",
                     @project.id, @date_from, @date_to]
 
-      WikiContent.versioned_class.find(:all, :select => select, :joins => joins, :conditions => conditions).each { |i|
-        # We provide this alias so all events can be treated in the same manner
-        def i.created_on
-          self.updated_on
-        end
-
-        @events_by_day[i.created_on.to_date] ||= []
-        @events_by_day[i.created_on.to_date] << i
-      }
-      @show_wiki_edits = 1
+      @events += WikiContent.versioned_class.find(:all, :select => select, :joins => joins, :conditions => conditions)
     end
 
-    unless @project.repository.nil? || params[:show_changesets] == "0"
-      @project.repository.changesets.find(:all, :conditions => ["#{Changeset.table_name}.committed_on BETWEEN ? AND ?", @date_from, @date_to]).each { |i|
-        def i.created_on
-          self.committed_on
-        end
-        @events_by_day[i.created_on.to_date] ||= []
-        @events_by_day[i.created_on.to_date] << i
-      }
-      @show_changesets = 1 
+    if @scope.include?('revisions') && @project.repository
+      @events += @project.repository.changesets.find(:all, :conditions => ["#{Changeset.table_name}.committed_on BETWEEN ? AND ?", @date_from, @date_to])
     end
     
-    render :layout => false if request.xhr?
+    @events_by_day = @events.group_by(&:event_date)
+    
+    respond_to do |format|
+      format.html { render :layout => false if request.xhr? }
+      format.atom { render_feed(@events, :title => "#{@project.name}: #{l(:label_activity)}") }
+    end
   end
   
   def calendar
@@ -611,7 +604,7 @@ class ProjectsController < ApplicationController
     
   def feeds
     @queries = @project.queries.find :all, :conditions => ["is_public=? or user_id=?", true, (logged_in_user ? logged_in_user.id : 0)]
-    @key = logged_in_user.get_or_create_rss_key.value if logged_in_user
+    @key = User.current.rss_key
   end
   
 private

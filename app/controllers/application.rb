@@ -38,6 +38,9 @@ class ApplicationController < ActionController::Base
     elsif cookies[:autologin] && Setting.autologin?
       # auto-login feature
       User.current = User.find_by_autologin_key(autologin_key)
+    elsif params[:key] && accept_key_auth_actions.include?(params[:action])
+      # RSS key authentication
+      User.current = User.find_by_rss_key(params[:key])
     else
       User.current = User.anonymous
     end
@@ -129,6 +132,21 @@ class ApplicationController < ActionController::Base
     @html_title = "404"
     render :template => "common/404", :layout => true, :status => 404
     return false
+  end
+  
+  def render_feed(items, options={})
+    @items = items.sort {|x,y| y.event_datetime <=> x.event_datetime }
+    @title = options[:title] || Setting.app_title
+    render :template => "common/feed.atom.rxml", :layout => false, :content_type => 'application/atom+xml'
+  end
+  
+  def self.accept_key_auth(*actions)
+    actions = actions.flatten.map(&:to_s)
+    write_inheritable_attribute('accept_key_auth_actions', actions)
+  end
+  
+  def accept_key_auth_actions
+    self.class.read_inheritable_attribute('accept_key_auth_actions') || []
   end
 
   # qvalues http header parser

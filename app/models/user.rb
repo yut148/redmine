@@ -28,7 +28,7 @@ class User < ActiveRecord::Base
   has_many :custom_values, :dependent => :delete_all, :as => :customized
   has_many :issue_categories, :foreign_key => 'assigned_to_id', :dependent => :nullify
   has_one :preference, :dependent => :destroy, :class_name => 'UserPreference'
-  has_one :rss_key, :dependent => :destroy, :class_name => 'Token', :conditions => "action='feeds'"
+  has_one :rss_token, :dependent => :destroy, :class_name => 'Token', :conditions => "action='feeds'"
   belongs_to :auth_source
   
   attr_accessor :password, :password_confirmation
@@ -125,8 +125,10 @@ class User < ActiveRecord::Base
     self.preference ||= UserPreference.new(:user => self)
   end
   
-  def get_or_create_rss_key
-    self.rss_key || Token.create(:user => self, :action => 'feeds')
+  # Return user's RSS key (a 40 chars long string), used to access feeds
+  def rss_key
+    token = self.rss_token || Token.create(:user => self, :action => 'feeds')
+    token.value
   end
   
   def self.find_by_rss_key(key)
@@ -141,6 +143,10 @@ class User < ActiveRecord::Base
 
   def <=>(user)
     lastname == user.lastname ? firstname <=> user.firstname : lastname <=> user.lastname
+  end
+  
+  def to_s
+    name
   end
   
   def logged?
@@ -201,5 +207,10 @@ end
 class AnonymousUser < User
   def logged?
     false
+  end
+  
+  # Anonymous user has no RSS key
+  def rss_key
+    nil
   end
 end
