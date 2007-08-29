@@ -45,10 +45,6 @@
 	<% else %>
 	  <li><%= link_to l(:label_project_plural), { :controller => 'projects' }, :class => "icon icon-projects" %></li>
 	<% end %>
-
-    <% unless @project.nil? || @project.id.nil? %>
-        <li class="submenu"><%= link_to @project.name, { :controller => 'projects', :action => 'show', :id => @project }, :class => "icon icon-projects", :onmouseover => "buttonMouseover(event, 'menuProject');"  %></li>
-    <% end %>
 			
     <% if User.current.logged? %>
 		<li><%= link_to l(:label_my_account), { :controller => 'my', :action => 'account' }, :class => "icon icon-user" %></li>
@@ -70,37 +66,6 @@
 
     <% if User.current.admin? %>
 		<%= render :partial => 'admin/menu' %>        
-    <% end %>
-    
-    <% unless @project.nil? || @project.id.nil? %>
-    <div id="menuProject" class="menu" onmouseover="menuMouseover(event)">
-        <%= link_to l(:label_calendar), {:controller => 'projects', :action => 'calendar', :id => @project }, :class => "menuItem" %>
-        <%= link_to l(:label_gantt), {:controller => 'projects', :action => 'gantt', :id => @project }, :class => "menuItem" %>
-        <%= link_to l(:label_issue_plural), {:controller => 'projects', :action => 'list_issues', :id => @project }, :class => "menuItem" %>
-        <% if @project && authorize_for('projects', 'add_issue') %>
-          <a class="menuItem" href="#" onmouseover="menuItemMouseover(event,'menuNewIssue');" onclick="this.blur(); return false;"><span class="menuItemText"><%= l(:label_issue_new) %></span><span class="menuItemArrow">&#9654;</span></a>
-        <% end %>
-        <%= link_to l(:label_report_plural), {:controller => 'reports', :action => 'issue_report', :id => @project }, :class => "menuItem" %>
-        <%= link_to l(:label_activity), {:controller => 'projects', :action => 'activity', :id => @project }, :class => "menuItem" %>
-        <%= link_to l(:label_news_plural), {:controller => 'projects', :action => 'list_news', :id => @project }, :class => "menuItem" %>
-        <%= link_to l(:label_change_log), {:controller => 'projects', :action => 'changelog', :id => @project }, :class => "menuItem" %>
-        <%= link_to l(:label_roadmap), {:controller => 'projects', :action => 'roadmap', :id => @project }, :class => "menuItem" %>
-        <%= link_to l(:label_document_plural), {:controller => 'projects', :action => 'list_documents', :id => @project }, :class => "menuItem" %>
-        <%= link_to l(:label_wiki), {:controller => 'wiki', :id => @project, :page => nil }, :class => "menuItem" if @project.wiki and !@project.wiki.new_record? %>        
-        <%= link_to l(:label_board_plural), {:controller => 'boards', :project_id => @project }, :class => "menuItem" unless @project.boards.empty? %>
-        <%= link_to l(:label_attachment_plural), {:controller => 'projects', :action => 'list_files', :id => @project }, :class => "menuItem" %>
-        <%= link_to l(:label_search), {:controller => 'search', :action => 'index', :id => @project }, :class => "menuItem" %>
-        <%= link_to l(:label_repository), {:controller => 'repositories', :action => 'show', :id => @project}, :class => "menuItem" if @project.repository and !@project.repository.new_record? %>
-        <%= link_to_if_authorized l(:label_settings), {:controller => 'projects', :action => 'settings', :id => @project }, :class => "menuItem" %>
-    </div>
-    <% end %>
-    
-    <% if @project && authorize_for('projects', 'add_issue') %>
-        <div id="menuNewIssue" class="menu" onmouseover="menuMouseover(event)">
-        <% Tracker.find(:all, :order => 'position').each do |tracker| %>
-            <%= link_to tracker.name, {:controller => 'projects', :action => 'add_issue', :id => @project, :tracker_id => tracker}, :class => "menuItem" %>
-        <% end %>
-        </div>
     <% end %>
 
     <% if User.current.memberships.any? %>
